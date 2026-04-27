@@ -1,0 +1,56 @@
+name: glacier
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: glacier-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-glacier}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-glacier123}
+      POSTGRES_DB: ${POSTGRES_DB:-glacier}
+    volumes:
+      - glacier-postgres-data:/var/lib/postgresql/data
+      - ./control-plane/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-glacier} -d ${POSTGRES_DB:-glacier}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - glacier-net
+
+  control-plane:
+    build:
+      context: ./control-plane
+      dockerfile: Dockerfile
+    image: glacier-control-plane:latest
+    container_name: glacier-control-plane
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-glacier}:${POSTGRES_PASSWORD:-glacier123}@postgres:5432/${POSTGRES_DB:-glacier}?sslmode=disable
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:?Set WEBHOOK_SECRET in .env (generate with `openssl rand -hex 32`)}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      PORT: 8080
+      RUST_LOG: ${RUST_LOG:-control_plane=info,tower_http=info}
+    ports:
+      - "${HOST_PORT:-80}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8080/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - glacier-net
+
+volumes:
+  glacier-postgres-data:
+    name: glacier-postgres-data
+
+networks:
+  glacier-net:
+    name: glacier-net

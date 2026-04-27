@@ -1,0 +1,44 @@
+agents:
+  queue: "ubuntu-1"
+
+steps:
+  - label: ":rust: cargo check"
+    key: "check"
+    command: |
+      set -euo pipefail
+      cd control-plane
+      RUSTFLAGS="-D warnings" cargo check 2>&1
+    timeout_in_minutes: 8
+
+  - label: ":test_tube: cargo test"
+    key: "unit-tests"
+    depends_on: "check"
+    command: |
+      set -euo pipefail
+      cd control-plane
+      RUSTFLAGS="-D warnings" cargo test 2>&1
+    timeout_in_minutes: 8
+
+  - label: ":docker: API smoke tests"
+    key: "api-smoke"
+    depends_on: "check"
+    command: |
+      set -euo pipefail
+      bash scripts/test_api_smoke.sh
+    timeout_in_minutes: 6
+
+  - label: ":rocket: E2E agent lifecycle"
+    key: "e2e-agent"
+    depends_on: "api-smoke"
+    command: |
+      set -euo pipefail
+      bash scripts/test_e2e_agent.sh
+    timeout_in_minutes: 8
+
+  - label: ":webhook: E2E webhook-to-build"
+    key: "e2e-webhook"
+    depends_on: "api-smoke"
+    command: |
+      set -euo pipefail
+      bash scripts/test_e2e_webhook.sh
+    timeout_in_minutes: 8

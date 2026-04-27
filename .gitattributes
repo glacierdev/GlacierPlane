@@ -1,0 +1,5 @@
+# Force LF line endings for shell scripts (required for Linux agent execution)
+*.sh text eol=lf
+buildkite.yml text eol=lf
+glacier.yml text eol=lf
+Dockerfile text eol=lf
