@@ -1,0 +1,4 @@
+control-plane/target/
+control-plane/.env
+ui/.env
+.DS_Store
