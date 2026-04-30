@@ -293,7 +293,7 @@ ci/<pipeline_slug>
 Install the agent binary on the machine that will execute jobs:
 
 ```bash
-sudo wget https://github.com/buildkite/agent/releases/latest/download/buildkite-agent-linux-amd64 -O /usr/local/bin/buildkite-agent
+sudo wget https://github.com/buildkite/agent/releases/download/v3.124.0/buildkite-agent-linux-amd64-3.124.0.tar.gz -O /usr/local/bin/buildkite-agent
 sudo chmod +x /usr/local/bin/buildkite-agent
 ```
 
