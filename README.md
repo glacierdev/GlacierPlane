@@ -10,6 +10,7 @@ The control plane implements the Buildkite Agent V3 protocol, so the standard `b
 - 🔎 [Repository Layout](#repository-layout)
 
 📄 Instructions:
+
 - [1. Deploy The Control Plane On Ubuntu](#1-deploy-the-control-plane-on-ubuntu)
 - [2. Run The UI](#2-run-the-ui)
 - [3. Prepare A Repository Pipeline](#3-prepare-a-repository-pipeline)
@@ -121,6 +122,7 @@ openssl rand -hex 32
 
 Environment variables:
 
+
 | Variable            | Description                                                                                                    |
 | ------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `WEBHOOK_SECRET`    | Required. Secret placed in the GitHub webhook URL path: `/webhooks/github/<secret>`.                           |
@@ -130,6 +132,7 @@ Environment variables:
 | `POSTGRES_PASSWORD` | PostgreSQL password. Defaults to `glacier123`.                                                                 |
 | `POSTGRES_DB`       | PostgreSQL database. Defaults to `glacier`.                                                                    |
 | `RUST_LOG`          | Rust log filter. Use `control_plane=debug,tower_http=info` while debugging.                                    |
+
 
 Start the stack:
 
@@ -422,32 +425,6 @@ List endpoints support pagination with `page` and `per_page`. Responses expose `
 Build lists support filters for state, branch, commit, date ranges, and creator.
 
 ## Development
-
-Run the control plane locally if you already have PostgreSQL available:
-
-```bash
-cd control-plane
-DATABASE_URL=postgres://glacier:glacier123@localhost/glacier?sslmode=disable \
-WEBHOOK_SECRET=dev-secret \
-PORT=8080 \
-cargo run
-```
-
-Run checks:
-
-```bash
-cd control-plane
-RUSTFLAGS="-D warnings" cargo check
-cargo test
-```
-
-Run UI checks:
-
-```bash
-cd ui
-npm run lint
-npm run build
-```
 
 The main extension points are:
 
