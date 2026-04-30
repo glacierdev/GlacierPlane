@@ -23,7 +23,12 @@ impl Dispatcher {
 
     pub async fn match_job_to_agent(&self, agent: &Agent) -> Result<Option<Job>, AppError> {
         if agent.current_job_id.is_some() {
-            tracing::debug!("Agent {} already has a job assigned", agent.name);
+            tracing::info!(
+                "Agent {} (id: {}) already has job {:?} assigned, skipping match",
+                agent.name,
+                agent.id,
+                agent.current_job_id
+            );
             return Ok(None);
         }
 
@@ -55,8 +60,8 @@ impl Dispatcher {
                 let pipeline = self.db.get_pipeline_by_slug(&build.pipeline_slug).await?;
                 if let Some(pipeline_org_id) = pipeline.organization_id {
                     if agent.organization_id != Some(pipeline_org_id) {
-                        tracing::debug!(
-                            "Pipeline-upload job {} belongs to org {}, but agent {} belongs to org {:?} — skipping",
+                        tracing::info!(
+                            "Skipping job {}: pipeline-upload belongs to org {}, but agent {} belongs to org {:?}",
                             job.id, pipeline_org_id, agent.name, agent.organization_id
                         );
                         continue;
@@ -70,19 +75,17 @@ impl Dispatcher {
 
                 if let JobQueueResult::Queue(queue) = queue_result {
                     let Some(agent_queue_id) = agent.queue_id else {
-                        tracing::debug!(
-                            "Job {} requires queue '{}', but agent {} has no queue assigned",
-                            job.id,
-                            queue.key,
-                            agent.name
+                        tracing::info!(
+                            "Skipping job {}: job requires queue '{}' (id: {}), but agent {} (id: {}) has no queue assigned",
+                            job.id, queue.key, queue.id, agent.name, agent.id
                         );
                         continue;
                     };
 
                     if agent_queue_id != queue.id {
-                        tracing::debug!(
-                            "Queue mismatch for job {}: requires '{}', agent {} is in different queue",
-                            job.id, queue.key, agent.name
+                        tracing::info!(
+                            "Skipping job {}: job requires queue '{}' (id: {}), but agent {} (id: {}) is in queue id {}",
+                            job.id, queue.key, queue.id, agent.name, agent.id, agent_queue_id
                         );
                         continue;
                     }
@@ -90,10 +93,22 @@ impl Dispatcher {
             }
 
             if !tags_match(&job, agent) {
+                tracing::info!(
+                    "Skipping job {}: agent {} (tags: {:?}) does not satisfy required tags {:?}",
+                    job.id,
+                    agent.name,
+                    agent.tags,
+                    job.step_config.get("agents")
+                );
                 continue;
             }
 
             if !self.dependencies_met(&job).await? {
+                tracing::info!(
+                    "Skipping job {}: dependencies not yet satisfied (depends_on: {:?})",
+                    job.id,
+                    job.depends_on
+                );
                 continue;
             }
 
@@ -110,9 +125,9 @@ impl Dispatcher {
                         .await
                     {
                         Ok(true) => {
-                            tracing::debug!(
-                                "Holding job {} — a higher-priority agent is available in queue (agent {} priority: {:?})",
-                                job.id, agent.name, agent.priority
+                            tracing::info!(
+                                "Holding job {}: a higher-priority agent is available in queue {} (current agent {} priority: {:?})",
+                                job.id, queue_id, agent.name, agent.priority
                             );
                             continue;
                         }

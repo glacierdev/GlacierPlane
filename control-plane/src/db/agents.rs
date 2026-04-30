@@ -277,10 +277,7 @@ impl Database {
                  AND status = 'connected'
                  AND current_job_id IS NULL
                  AND last_seen > NOW() - make_interval(secs => $3::double precision)
-                 AND (
-                     ($4::INT IS NULL AND priority IS NOT NULL)
-                     OR ($4::INT IS NOT NULL AND priority IS NOT NULL AND priority > $4)
-                 )"#,
+                 AND COALESCE(priority, 0) > COALESCE($4::INT, 0)"#,
         )
         .bind(queue_id)
         .bind(current_agent_id)
