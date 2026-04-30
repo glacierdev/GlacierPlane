@@ -319,6 +319,7 @@ Or use a config file:
 sudo mkdir -p /etc/buildkite-agent
 sudo tee /etc/buildkite-agent/buildkite-agent.cfg >/dev/null <<'EOF'
 token="<registration-token-from-ui>"
+endpoint="http://<control-plane-host-or-domain>:80/v3"
 tags="queue=ubuntu-1,os=linux"
 name="%hostname-%spawn"
 priority=1
