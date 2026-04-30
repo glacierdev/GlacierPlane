@@ -323,6 +323,7 @@ endpoint="http://<control-plane-host-or-domain>:80/v3"
 tags="queue=ubuntu-1,os=linux"
 name="%hostname-%spawn"
 priority=1
+build-path="/var/lib/buildkite-agent/builds"
 EOF
 ```
 
