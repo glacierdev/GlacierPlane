@@ -536,6 +536,7 @@ pub async fn get_job_log(
     }
 
     let chunks = state.db.get_log_chunks_for_job(job.id).await?;
+    let chunk_count = chunks.len();
     let content: String = chunks
         .into_iter()
         .map(|chunk| String::from_utf8_lossy(&chunk.data).to_string())
@@ -543,9 +544,20 @@ pub async fn get_job_log(
         .join("");
     let size = content.len();
 
+    if chunk_count == 0 {
+        tracing::warn!(
+            "Job {} has no log chunks stored (state: {}, chunks_failed_count: {})",
+            job.id,
+            job.state,
+            job.chunks_failed_count
+        );
+    }
+
     Ok(Json(JobLogResponse {
         content,
         size,
         header_times: vec![],
+        chunk_count,
+        chunks_failed_count: job.chunks_failed_count,
     }))
 }

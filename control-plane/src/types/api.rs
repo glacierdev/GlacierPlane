@@ -238,6 +238,8 @@ pub struct JobLogResponse {
     pub content: String,
     pub size: usize,
     pub header_times: Vec<i64>,
+    pub chunk_count: usize,
+    pub chunks_failed_count: i32,
 }
 
 #[derive(Debug, Deserialize)]

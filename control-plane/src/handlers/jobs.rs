@@ -178,14 +178,45 @@ pub async fn upload_chunk(
     Extension(agent): Extension<Agent>,
     body: axum::body::Bytes,
 ) -> Result<impl IntoResponse, AppError> {
-    tracing::info!("upload_chunk: {:?}", params);
     let _job = load_job_for_agent(&state, job_id, agent.id).await?;
 
-    let mut decoder = GzDecoder::new(body.as_ref());
-    let mut decompressed = Vec::new();
-    decoder
-        .read_to_end(&mut decompressed)
-        .map_err(|_| AppError::Http(StatusCode::BAD_REQUEST, "Invalid gzip data".into()))?;
+    let body_len = body.len();
+    tracing::info!(
+        "upload_chunk: job={} agent={} sequence={} offset={} declared_size={} body_bytes={}",
+        job_id,
+        agent.name,
+        params.sequence,
+        params.offset,
+        params.size,
+        body_len,
+    );
+
+    if body_len == 0 {
+        tracing::warn!(
+            "upload_chunk: empty body for job {} sequence {}, skipping",
+            job_id,
+            params.sequence
+        );
+        return Ok(StatusCode::OK);
+    }
+
+    let data = match decode_chunk_body(body.as_ref()) {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            tracing::error!(
+                "upload_chunk: failed to decode body for job {} sequence {}: {} (body_len={}, first16={:?})",
+                job_id,
+                params.sequence,
+                err,
+                body_len,
+                body.iter().take(16).copied().collect::<Vec<_>>(),
+            );
+            return Err(AppError::Http(
+                StatusCode::BAD_REQUEST,
+                format!("Invalid chunk body: {err}"),
+            ));
+        }
+    };
 
     let mut chunk = LogChunk {
         id: Uuid::new_v4(),
@@ -193,7 +224,7 @@ pub async fn upload_chunk(
         sequence: params.sequence,
         offset: params.offset,
         size: params.size,
-        data: decompressed,
+        data,
         created_at: Utc::now().naive_utc(),
     };
 
@@ -202,16 +233,41 @@ pub async fn upload_chunk(
     Ok(StatusCode::OK)
 }
 
+fn decode_chunk_body(body: &[u8]) -> Result<Vec<u8>, String> {
+    if looks_like_gzip(body) {
+        let mut decoder = GzDecoder::new(body);
+        let mut decompressed = Vec::with_capacity(body.len());
+        decoder
+            .read_to_end(&mut decompressed)
+            .map_err(|e| format!("gzip decode failed: {e}"))?;
+        Ok(decompressed)
+    } else {
+        // Some agents/proxies may already have decompressed the body, or send raw text.
+        // Fall back to storing the raw bytes so logs are not silently dropped.
+        Ok(body.to_vec())
+    }
+}
+
+fn looks_like_gzip(body: &[u8]) -> bool {
+    body.len() >= 2 && body[0] == 0x1f && body[1] == 0x8b
+}
+
 pub async fn metadata_exists(
     State(state): State<Arc<AppState>>,
     Path(job_id): Path<Uuid>,
     Extension(agent): Extension<Agent>,
     Json(payload): Json<MetadataExistsRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    tracing::info!("metadata_exists: {:?}", payload);
     let job = load_job_for_agent(&state, job_id, agent.id).await?;
-
     let exists = state.db.metadata_exists(job.build_id, &payload.key).await?;
+    tracing::info!(
+        "metadata_exists: job={} agent={} build={} key={:?} exists={}",
+        job_id,
+        agent.name,
+        job.build_id,
+        payload.key,
+        exists
+    );
     Ok(Json(json!({ "exists": exists })))
 }
 
@@ -222,6 +278,14 @@ pub async fn metadata_set(
     Json(payload): Json<MetadataSetRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let job = load_job_for_agent(&state, job_id, agent.id).await?;
+    tracing::info!(
+        "metadata_set: job={} agent={} build={} key={:?} value_len={}",
+        job_id,
+        agent.name,
+        job.build_id,
+        payload.key,
+        payload.value.len()
+    );
 
     state
         .db
@@ -237,14 +301,42 @@ pub async fn metadata_get(
     Json(payload): Json<MetadataGetRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let job = load_job_for_agent(&state, job_id, agent.id).await?;
+    let value = state.db.get_metadata(job.build_id, &payload.key).await?;
 
-    let value = state
-        .db
-        .get_metadata(job.build_id, &payload.key)
-        .await?
-        .ok_or_else(|| AppError::Http(StatusCode::NOT_FOUND, "Key not found".into()))?;
-
-    Ok(Json(json!({ "value": value })))
+    match value {
+        Some(value) => {
+            tracing::info!(
+                "metadata_get: job={} agent={} build={} key={:?} value_len={}",
+                job_id,
+                agent.name,
+                job.build_id,
+                payload.key,
+                value.len()
+            );
+            Ok((
+                StatusCode::OK,
+                Json(json!({ "key": payload.key, "value": value })),
+            )
+                .into_response())
+        }
+        None => {
+            tracing::info!(
+                "metadata_get: job={} agent={} build={} key={:?} -> not found",
+                job_id,
+                agent.name,
+                job.build_id,
+                payload.key
+            );
+            Ok((
+                StatusCode::NOT_FOUND,
+                Json(json!({
+                    "key": payload.key,
+                    "message": "Key not found",
+                })),
+            )
+                .into_response())
+        }
+    }
 }
 
 pub async fn metadata_keys(
@@ -253,8 +345,14 @@ pub async fn metadata_keys(
     Extension(agent): Extension<Agent>,
 ) -> Result<impl IntoResponse, AppError> {
     let job = load_job_for_agent(&state, job_id, agent.id).await?;
-
     let keys = state.db.get_metadata_keys(job.build_id).await?;
+    tracing::info!(
+        "metadata_keys: job={} agent={} build={} count={}",
+        job_id,
+        agent.name,
+        job.build_id,
+        keys.len()
+    );
     Ok(Json(keys))
 }
 
