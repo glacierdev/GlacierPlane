@@ -8,6 +8,7 @@ The control plane implements the Buildkite Agent V3 protocol, so the standard `b
 
 - 📷 [Video Overview](#video-overview)
 - 🔎 [Repository Layout](#repository-layout)
+
 📄 Instructions:
 - [1. Deploy The Control Plane On Ubuntu](#1-deploy-the-control-plane-on-ubuntu)
 - [2. Run The UI](#2-run-the-ui)
