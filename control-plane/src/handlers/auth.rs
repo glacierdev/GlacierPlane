@@ -64,23 +64,42 @@ pub async fn user_register(
     tracing::info!("User registration request for email: {}", payload.email);
 
     if payload.email.is_empty() || payload.name.is_empty() || payload.password.is_empty() {
-        return Err(AppError::Http(StatusCode::BAD_REQUEST, "Email, name, and password are required".into()));
+        return Err(AppError::Http(
+            StatusCode::BAD_REQUEST,
+            "Email, name, and password are required".into(),
+        ));
     }
     if !payload.email.contains('@') {
-        return Err(AppError::Http(StatusCode::BAD_REQUEST, "Invalid email format".into()));
+        return Err(AppError::Http(
+            StatusCode::BAD_REQUEST,
+            "Invalid email format".into(),
+        ));
     }
     if payload.password.len() < 6 {
-        return Err(AppError::Http(StatusCode::BAD_REQUEST, "Password must be at least 6 characters".into()));
+        return Err(AppError::Http(
+            StatusCode::BAD_REQUEST,
+            "Password must be at least 6 characters".into(),
+        ));
     }
     if state.db.user_exists(&payload.email).await? {
-        return Err(AppError::Http(StatusCode::CONFLICT, "User with this email already exists".into()));
+        return Err(AppError::Http(
+            StatusCode::CONFLICT,
+            "User with this email already exists".into(),
+        ));
     }
 
     let password_hash = bcrypt::hash(&payload.password, bcrypt::DEFAULT_COST)
         .map_err(|e| AppError::Message(format!("Failed to hash password: {}", e)))?;
 
-    let user = state.db.create_user(&payload.email, &payload.name, &password_hash).await?;
-    tracing::info!("User registered successfully: {} (id: {})", user.email, user.id);
+    let user = state
+        .db
+        .create_user(&payload.email, &payload.name, &password_hash)
+        .await?;
+    tracing::info!(
+        "User registered successfully: {} (id: {})",
+        user.email,
+        user.id
+    );
 
     create_session_response(&state, &user, StatusCode::CREATED).await
 }
@@ -92,19 +111,27 @@ pub async fn user_login(
     tracing::info!("User login attempt for email: {}", payload.email);
 
     if payload.email.is_empty() || payload.password.is_empty() {
-        return Err(AppError::Http(StatusCode::BAD_REQUEST, "Email and password are required".into()));
+        return Err(AppError::Http(
+            StatusCode::BAD_REQUEST,
+            "Email and password are required".into(),
+        ));
     }
 
     let user = state
         .db
         .get_user_by_email(&payload.email)
         .await
-        .map_err(|_| AppError::Http(StatusCode::UNAUTHORIZED, "Invalid email or password".into()))?;
+        .map_err(|_| {
+            AppError::Http(StatusCode::UNAUTHORIZED, "Invalid email or password".into())
+        })?;
 
     let valid = bcrypt::verify(&payload.password, &user.password_hash)
         .map_err(|e| AppError::Message(format!("Failed to verify password: {}", e)))?;
     if !valid {
-        return Err(AppError::Http(StatusCode::UNAUTHORIZED, "Invalid email or password".into()));
+        return Err(AppError::Http(
+            StatusCode::UNAUTHORIZED,
+            "Invalid email or password".into(),
+        ));
     }
 
     tracing::info!("User logged in: {} (id: {})", user.email, user.id);
@@ -138,7 +165,10 @@ pub async fn user_logout(
 
     Ok((
         StatusCode::OK,
-        [("Set-Cookie", "session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax".to_string())],
+        [(
+            "Set-Cookie",
+            "session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax".to_string(),
+        )],
         Json(json!({ "message": "Logged out successfully" })),
     ))
 }

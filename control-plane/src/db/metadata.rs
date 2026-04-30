@@ -14,7 +14,11 @@ impl Database {
         Ok(count > 0)
     }
 
-    pub async fn get_metadata(&self, build_id: Uuid, key: &str) -> Result<Option<String>, sqlx::Error> {
+    pub async fn get_metadata(
+        &self,
+        build_id: Uuid,
+        key: &str,
+    ) -> Result<Option<String>, sqlx::Error> {
         let result = sqlx::query_scalar::<_, String>(
             r#"SELECT value FROM metadata WHERE build_id = $1 AND key = $2"#,
         )
@@ -25,7 +29,12 @@ impl Database {
         Ok(result)
     }
 
-    pub async fn set_metadata(&self, build_id: Uuid, key: &str, value: &str) -> Result<(), sqlx::Error> {
+    pub async fn set_metadata(
+        &self,
+        build_id: Uuid,
+        key: &str,
+        value: &str,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"INSERT INTO metadata (build_id, key, value)
                VALUES ($1, $2, $3)

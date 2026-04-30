@@ -125,7 +125,11 @@ impl Database {
         Ok(row)
     }
 
-    pub async fn get_builds_for_pipeline(&self, pipeline_slug: &str, limit: i64) -> Result<Vec<Build>, sqlx::Error> {
+    pub async fn get_builds_for_pipeline(
+        &self,
+        pipeline_slug: &str,
+        limit: i64,
+    ) -> Result<Vec<Build>, sqlx::Error> {
         sqlx::query_as::<_, Build>(
             r#"SELECT id, number, pipeline_slug, commit, branch, tag, message, author_name, author_email,
                       status, webhook_payload, created_at, started_at, finished_at, pull_request_number, source
@@ -140,7 +144,11 @@ impl Database {
         .await
     }
 
-    pub async fn get_build_by_pipeline_slug_and_number(&self, pipeline_slug: &str, number: i32) -> Result<Build, sqlx::Error> {
+    pub async fn get_build_by_pipeline_slug_and_number(
+        &self,
+        pipeline_slug: &str,
+        number: i32,
+    ) -> Result<Build, sqlx::Error> {
         sqlx::query_as::<_, Build>(
             r#"SELECT id, number, pipeline_slug, commit, branch, tag, message, author_name, author_email,
                      status, webhook_payload, created_at, started_at, finished_at, pull_request_number, source
@@ -152,7 +160,10 @@ impl Database {
         .await
     }
 
-    pub async fn get_pipeline_stats(&self, pipeline_slug: &str) -> Result<PipelineStats, sqlx::Error> {
+    pub async fn get_pipeline_stats(
+        &self,
+        pipeline_slug: &str,
+    ) -> Result<PipelineStats, sqlx::Error> {
         sqlx::query_as::<_, PipelineStats>(
             r#"SELECT 
                    COUNT(*)::BIGINT as total_builds,
@@ -175,12 +186,18 @@ impl Database {
     ) -> Result<Pipeline, sqlx::Error> {
         if !repo_url.is_empty() {
             let normalized_repo = normalize_repo_url(repo_url);
-            tracing::debug!("Looking for pipeline by repo URL: {} (normalized: {})", repo_url, normalized_repo);
+            tracing::debug!(
+                "Looking for pipeline by repo URL: {} (normalized: {})",
+                repo_url,
+                normalized_repo
+            );
 
             if let Ok(mut p) = self.get_pipeline_by_repo_url(&normalized_repo).await {
                 tracing::info!(
                     "Found existing pipeline '{}' (id: {}, user_id: {:?}) by repository URL match",
-                    p.slug, p.id, p.user_id
+                    p.slug,
+                    p.id,
+                    p.user_id
                 );
                 if p.repository_url != repo_url {
                     let now = Utc::now();
@@ -200,7 +217,12 @@ impl Database {
 
         match self.get_pipeline_by_slug(slug).await {
             Ok(mut p) => {
-                tracing::debug!("Found pipeline by slug '{}' (id: {}, user_id: {:?})", slug, p.id, p.user_id);
+                tracing::debug!(
+                    "Found pipeline by slug '{}' (id: {}, user_id: {:?})",
+                    slug,
+                    p.id,
+                    p.user_id
+                );
                 if !repo_url.is_empty() && p.repository_url != repo_url {
                     let now = Utc::now();
                     sqlx::query(
@@ -221,7 +243,11 @@ impl Database {
             Err(e) => return Err(e),
         }
 
-        tracing::info!("Creating new pipeline with slug '{}' and repo '{}'", slug, repo_url);
+        tracing::info!(
+            "Creating new pipeline with slug '{}' and repo '{}'",
+            slug,
+            repo_url
+        );
         let id = Uuid::new_v4();
         let now = Utc::now();
         let pipeline = sqlx::query_as::<_, Pipeline>(
@@ -243,7 +269,10 @@ impl Database {
         Ok(pipeline)
     }
 
-    pub async fn get_pipeline_by_repo_url(&self, normalized_url: &str) -> Result<Pipeline, sqlx::Error> {
+    pub async fn get_pipeline_by_repo_url(
+        &self,
+        normalized_url: &str,
+    ) -> Result<Pipeline, sqlx::Error> {
         let pattern = format!("%{}%", normalized_url);
 
         sqlx::query_as::<_, Pipeline>(
@@ -263,7 +292,12 @@ impl Database {
         let owner_repo = extract_owner_repo(repo_url);
         let pattern = format!("%{}%", owner_repo);
 
-        tracing::debug!("Finding pipeline by repo URL: {} (owner/repo: {}, pattern: {})", repo_url, owner_repo, pattern);
+        tracing::debug!(
+            "Finding pipeline by repo URL: {} (owner/repo: {}, pattern: {})",
+            repo_url,
+            owner_repo,
+            pattern
+        );
 
         sqlx::query_as::<_, Pipeline>(
             r#"SELECT id, slug, repository_url, webhook_secret, config_cache, 
@@ -289,7 +323,11 @@ impl Database {
         .await
     }
 
-    pub async fn get_pipeline_by_id_and_user(&self, id: Uuid, user_id: Uuid) -> Result<Pipeline, sqlx::Error> {
+    pub async fn get_pipeline_by_id_and_user(
+        &self,
+        id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Pipeline, sqlx::Error> {
         sqlx::query_as::<_, Pipeline>(
             r#"SELECT id, slug, repository_url, webhook_secret, config_cache,
                       user_id, organization_id, name, description, default_branch, created_at, updated_at
@@ -434,8 +472,9 @@ impl Database {
         pipeline_slug: &str,
         filter: &BuildFilter,
     ) -> Result<i64, sqlx::Error> {
-        let mut qb: sqlx::QueryBuilder<Postgres> =
-            sqlx::QueryBuilder::new("SELECT COUNT(*)::BIGINT FROM builds WHERE builds.pipeline_slug = ");
+        let mut qb: sqlx::QueryBuilder<Postgres> = sqlx::QueryBuilder::new(
+            "SELECT COUNT(*)::BIGINT FROM builds WHERE builds.pipeline_slug = ",
+        );
         qb.push_bind(pipeline_slug.to_string());
         append_build_filters(&mut qb, filter);
         let (count,): (i64,) = qb.build_query_as().fetch_one(&self.pool).await?;

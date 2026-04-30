@@ -100,7 +100,10 @@ impl Database {
         Ok(())
     }
 
-    pub async fn create_access_token(&self, access_token: &mut AccessToken) -> Result<(), sqlx::Error> {
+    pub async fn create_access_token(
+        &self,
+        access_token: &mut AccessToken,
+    ) -> Result<(), sqlx::Error> {
         let row = sqlx::query_as::<_, AccessToken>(
             r#"INSERT INTO access_tokens (agent_id, token, description)
                VALUES ($1, $2, $3)
@@ -127,7 +130,10 @@ impl Database {
         .await
     }
 
-    pub async fn get_access_tokens_for_agent(&self, agent_id: Uuid) -> Result<Vec<AccessToken>, sqlx::Error> {
+    pub async fn get_access_tokens_for_agent(
+        &self,
+        agent_id: Uuid,
+    ) -> Result<Vec<AccessToken>, sqlx::Error> {
         sqlx::query_as::<_, AccessToken>(
             r#"SELECT id, agent_id, token, description, revoked_at, last_used_at, created_at
                FROM access_tokens 
@@ -147,7 +153,10 @@ impl Database {
         Ok(())
     }
 
-    pub async fn revoke_all_access_tokens_for_agent(&self, agent_id: Uuid) -> Result<(), sqlx::Error> {
+    pub async fn revoke_all_access_tokens_for_agent(
+        &self,
+        agent_id: Uuid,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"UPDATE access_tokens SET revoked_at = NOW() 
                WHERE agent_id = $1 AND revoked_at IS NULL"#,
@@ -178,7 +187,10 @@ impl Database {
         .await
     }
 
-    pub async fn get_agents_by_registration_token(&self, token_id: Uuid) -> Result<Vec<Agent>, sqlx::Error> {
+    pub async fn get_agents_by_registration_token(
+        &self,
+        token_id: Uuid,
+    ) -> Result<Vec<Agent>, sqlx::Error> {
         sqlx::query_as::<_, Agent>(
             r#"SELECT id, uuid, name, hostname, os, arch, version, build, tags, priority,
                       status, registration_token_id, user_id, organization_id, queue_id, last_seen, last_heartbeat,
@@ -206,7 +218,11 @@ impl Database {
         .await
     }
 
-    pub async fn get_agent_by_id_and_user(&self, id: Uuid, user_id: Uuid) -> Result<Agent, sqlx::Error> {
+    pub async fn get_agent_by_id_and_user(
+        &self,
+        id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Agent, sqlx::Error> {
         sqlx::query_as::<_, Agent>(
             r#"SELECT id, uuid, name, hostname, os, arch, version, build, tags, priority,
                       status, registration_token_id, user_id, organization_id, queue_id, last_seen, last_heartbeat,
@@ -297,7 +313,10 @@ impl Database {
         .await
     }
 
-    pub async fn get_agent_tokens_by_user(&self, user_id: Uuid) -> Result<Vec<AgentToken>, sqlx::Error> {
+    pub async fn get_agent_tokens_by_user(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<AgentToken>, sqlx::Error> {
         sqlx::query_as::<_, AgentToken>(
             r#"SELECT id, token, name, description, user_id, organization_id, expires_at, created_at 
                FROM agent_tokens 
@@ -323,12 +342,10 @@ impl Database {
         .execute(&self.pool)
         .await?;
 
-        let agents_result = sqlx::query(
-            r#"DELETE FROM agents WHERE registration_token_id = $1"#,
-        )
-        .bind(id)
-        .execute(&self.pool)
-        .await?;
+        let agents_result = sqlx::query(r#"DELETE FROM agents WHERE registration_token_id = $1"#)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
 
         let agents_deleted = agents_result.rows_affected();
 
@@ -358,7 +375,12 @@ impl Database {
         Ok((result.rows_affected() > 0, agents_deleted))
     }
 
-    pub async fn delete_agent_token(&self, id: Uuid, user_id: Uuid) -> Result<(bool, u64), sqlx::Error> {
-        self.delete_agent_token_scoped(id, Some(user_id), None).await
+    pub async fn delete_agent_token(
+        &self,
+        id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(bool, u64), sqlx::Error> {
+        self.delete_agent_token_scoped(id, Some(user_id), None)
+            .await
     }
 }

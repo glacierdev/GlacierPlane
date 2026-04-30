@@ -80,7 +80,6 @@ impl BuildFilterParams {
             creator: self.creator.clone(),
         }
     }
-
 }
 
 #[derive(Debug, Deserialize)]

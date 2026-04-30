@@ -46,7 +46,11 @@ impl Database {
         .await
     }
 
-    pub async fn get_queue_by_id_and_user(&self, id: Uuid, user_id: Uuid) -> Result<Queue, sqlx::Error> {
+    pub async fn get_queue_by_id_and_user(
+        &self,
+        id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Queue, sqlx::Error> {
         sqlx::query_as::<_, Queue>(
             r#"SELECT id, user_id, organization_id, pipeline_id, name, key, description, is_default, created_at, updated_at
                FROM queues WHERE id = $1 AND user_id = $2"#,
@@ -57,7 +61,11 @@ impl Database {
         .await
     }
 
-    pub async fn get_queue_by_key_and_user(&self, key: &str, user_id: Uuid) -> Result<Queue, sqlx::Error> {
+    pub async fn get_queue_by_key_and_user(
+        &self,
+        key: &str,
+        user_id: Uuid,
+    ) -> Result<Queue, sqlx::Error> {
         sqlx::query_as::<_, Queue>(
             r#"SELECT id, user_id, organization_id, pipeline_id, name, key, description, is_default, created_at, updated_at
                FROM queues WHERE key = $1 AND user_id = $2"#,
@@ -79,7 +87,10 @@ impl Database {
         .await
     }
 
-    pub async fn get_queues_by_pipeline(&self, pipeline_id: Uuid) -> Result<Vec<Queue>, sqlx::Error> {
+    pub async fn get_queues_by_pipeline(
+        &self,
+        pipeline_id: Uuid,
+    ) -> Result<Vec<Queue>, sqlx::Error> {
         sqlx::query_as::<_, Queue>(
             r#"SELECT id, user_id, organization_id, pipeline_id, name, key, description, is_default, created_at, updated_at
                FROM queues WHERE pipeline_id = $1
@@ -90,7 +101,10 @@ impl Database {
         .await
     }
 
-    pub async fn get_default_queue_for_pipeline(&self, pipeline_id: Uuid) -> Result<Queue, sqlx::Error> {
+    pub async fn get_default_queue_for_pipeline(
+        &self,
+        pipeline_id: Uuid,
+    ) -> Result<Queue, sqlx::Error> {
         sqlx::query_as::<_, Queue>(
             r#"SELECT id, user_id, organization_id, pipeline_id, name, key, description, is_default, created_at, updated_at
                FROM queues WHERE pipeline_id = $1 AND is_default = true"#,

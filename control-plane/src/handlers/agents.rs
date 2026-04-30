@@ -44,7 +44,11 @@ async fn resolve_queue_id_from_tags(
 
     match existing_queue {
         Ok(queue) => {
-            tracing::info!("Auto-assigning agent to queue '{}' (id: {})", queue.key, queue.id);
+            tracing::info!(
+                "Auto-assigning agent to queue '{}' (id: {})",
+                queue.key,
+                queue.id
+            );
             Some(queue.id)
         }
         Err(sqlx::Error::RowNotFound) => match state
@@ -77,21 +81,39 @@ pub async fn register_agent(
     headers: HeaderMap,
     Json(payload): Json<AgentRegisterRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    tracing::info!("Agent registration request from: {} ({})", payload.name, payload.hostname);
+    tracing::info!(
+        "Agent registration request from: {} ({})",
+        payload.name,
+        payload.hostname
+    );
 
     let auth_header = headers
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
-        .ok_or_else(|| AppError::Http(StatusCode::UNAUTHORIZED, "Missing authorization token".into()))?;
+        .ok_or_else(|| {
+            AppError::Http(
+                StatusCode::UNAUTHORIZED,
+                "Missing authorization token".into(),
+            )
+        })?;
 
-    let token = extract_registration_token(auth_header)
-        .ok_or_else(|| AppError::Http(StatusCode::UNAUTHORIZED, "Invalid authorization header".into()))?;
+    let token = extract_registration_token(auth_header).ok_or_else(|| {
+        AppError::Http(
+            StatusCode::UNAUTHORIZED,
+            "Invalid authorization header".into(),
+        )
+    })?;
 
     let token_record = state
         .db
         .get_agent_token_by_token(&token)
         .await
-        .map_err(|_| AppError::Http(StatusCode::UNAUTHORIZED, "Invalid registration token".into()))?;
+        .map_err(|_| {
+            AppError::Http(
+                StatusCode::UNAUTHORIZED,
+                "Invalid registration token".into(),
+            )
+        })?;
 
     if payload.name.is_empty()
         || payload.hostname.is_empty()
@@ -100,7 +122,10 @@ pub async fn register_agent(
         || payload.version.is_empty()
         || payload.build.is_empty()
     {
-        return Err(AppError::Http(StatusCode::BAD_REQUEST, "Missing required fields".into()));
+        return Err(AppError::Http(
+            StatusCode::BAD_REQUEST,
+            "Missing required fields".into(),
+        ));
     }
 
     let priority = payload
@@ -157,7 +182,10 @@ pub async fn register_agent(
     state.db.create_access_token(&mut access_token).await?;
     tracing::info!(
         "Agent registered successfully: {} (id: {}, user_id: {:?}, queue_id: {:?})",
-        agent.name, agent.id, agent.user_id, agent.queue_id
+        agent.name,
+        agent.id,
+        agent.user_id,
+        agent.queue_id
     );
 
     let response = AgentRegisterResponse {
@@ -189,25 +217,43 @@ pub async fn connect_agent(
             agent.tags = Some(tags.clone());
             if let Some(p) = req.priority.as_deref().and_then(|s| s.parse::<i32>().ok()) {
                 agent.priority = Some(p);
-                tracing::info!("Agent {} priority updated from connect body: {}", agent.name, p);
+                tracing::info!(
+                    "Agent {} priority updated from connect body: {}",
+                    agent.name,
+                    p
+                );
             } else if let Some(p) = parse_priority_from_tags(tags) {
                 agent.priority = Some(p);
                 tracing::info!("Agent {} priority synced from tags: {}", agent.name, p);
             }
         } else if let Some(p) = req.priority.as_deref().and_then(|s| s.parse::<i32>().ok()) {
             agent.priority = Some(p);
-            tracing::info!("Agent {} priority updated from connect body: {}", agent.name, p);
+            tracing::info!(
+                "Agent {} priority updated from connect body: {}",
+                agent.name,
+                p
+            );
         }
     }
 
-    let tag_priority = agent.tags.as_ref().and_then(|tags| parse_priority_from_tags(tags));
+    let tag_priority = agent
+        .tags
+        .as_ref()
+        .and_then(|tags| parse_priority_from_tags(tags));
     if tag_priority.is_some() && agent.priority != tag_priority {
-        tracing::info!("Re-syncing agent {} priority to {:?}", agent.name, tag_priority);
+        tracing::info!(
+            "Re-syncing agent {} priority to {:?}",
+            agent.name,
+            tag_priority
+        );
         agent.priority = tag_priority;
     }
 
     if let Some(user_id) = agent.user_id {
-        let queue_key = agent.tags.as_ref().and_then(|tags| tag_value(tags, "queue"));
+        let queue_key = agent
+            .tags
+            .as_ref()
+            .and_then(|tags| tag_value(tags, "queue"));
         if queue_key.is_some() {
             if let Some(queue_id) = resolve_queue_id_from_tags(
                 &state,
@@ -288,7 +334,11 @@ pub async fn ping(
         let build = match state.db.get_build_by_id(job.build_id).await {
             Ok(build) => build,
             Err(sqlx::Error::RowNotFound) => {
-                tracing::warn!("Build {} not found for job {}, marking job as failed", job.build_id, job.id);
+                tracing::warn!(
+                    "Build {} not found for job {}, marking job as failed",
+                    job.build_id,
+                    job.id
+                );
                 job.state = "failed".into();
                 job.signal_reason = Some("missing_build".into());
                 job.agent_id = None;
@@ -297,9 +347,19 @@ pub async fn ping(
             }
             Err(err) => return Err(err.into()),
         };
-        let pipeline = state.db.get_pipeline_by_slug(&build.pipeline_slug).await.ok();
+        let pipeline = state
+            .db
+            .get_pipeline_by_slug(&build.pipeline_slug)
+            .await
+            .ok();
 
-        let job_resp = convert_job_to_response(&job, &build, pipeline.as_ref(), &agent, &auth_agent.access_token)?;
+        let job_resp = convert_job_to_response(
+            &job,
+            &build,
+            pipeline.as_ref(),
+            &agent,
+            &auth_agent.access_token,
+        )?;
         response.job = Some(job_resp);
 
         job.state = "accepted".into();

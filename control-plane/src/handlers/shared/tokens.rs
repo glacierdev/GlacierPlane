@@ -99,10 +99,8 @@ mod tests {
     #[test]
     fn generate_token_is_url_safe_base64() {
         let token = generate_secure_token(32);
-        assert!(
-            token
-                .chars()
-                .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
-        );
+        assert!(token
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '-' || c == '_'));
     }
 }

@@ -57,7 +57,9 @@ async fn detect_lost_agents(
     for mut agent in stale_agents {
         tracing::warn!(
             "Agent '{}' (id: {}) marked as lost — last seen {:?}",
-            agent.name, agent.id, agent.last_seen
+            agent.name,
+            agent.id,
+            agent.last_seen
         );
 
         agent.status = "lost".to_string();
@@ -66,12 +68,17 @@ async fn detect_lost_agents(
             match db.get_job_by_id(job_id).await {
                 Ok(mut job) => {
                     if job.state == "running" || job.state == "accepted" {
-                        finalize_job_with_reason(db, &mut job, "failed", "agent_lost", true, github).await?;
+                        finalize_job_with_reason(
+                            db,
+                            &mut job,
+                            "failed",
+                            "agent_lost",
+                            true,
+                            github,
+                        )
+                        .await?;
 
-                        tracing::warn!(
-                            "Job {} failed due to lost agent '{}'",
-                            job.id, agent.name
-                        );
+                        tracing::warn!("Job {} failed due to lost agent '{}'", job.id, agent.name);
                     }
                 }
                 Err(e) => {
@@ -126,7 +133,9 @@ async fn check_timed_out_jobs(
 
         tracing::warn!(
             "Job {} timed out after {} minutes (started at {:?})",
-            job.id, timeout_minutes, started_at
+            job.id,
+            timeout_minutes,
+            started_at
         );
 
         job.finished_at = Some(now);
@@ -144,7 +153,6 @@ async fn check_timed_out_jobs(
                 }
             }
         }
-
     }
 
     Ok(())

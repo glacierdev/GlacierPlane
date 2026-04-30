@@ -91,8 +91,11 @@ pub async fn admin_list_tokens(
             name: token.name,
             description: token.description,
             token_preview,
-            expires_at: token.expires_at.map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
-            created_at: DateTime::<Utc>::from_naive_utc_and_offset(token.created_at, Utc).to_rfc3339(),
+            expires_at: token
+                .expires_at
+                .map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
+            created_at: DateTime::<Utc>::from_naive_utc_and_offset(token.created_at, Utc)
+                .to_rfc3339(),
             agents_count,
             connected_count,
             running_count,
@@ -133,7 +136,9 @@ pub async fn admin_get_token(
         name: token.name,
         description: token.description,
         token_preview,
-        expires_at: token.expires_at.map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
+        expires_at: token
+            .expires_at
+            .map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
         created_at: DateTime::<Utc>::from_naive_utc_and_offset(token.created_at, Utc).to_rfc3339(),
         agents_count,
         connected_count,
@@ -152,8 +157,12 @@ pub async fn admin_get_token(
             version: a.version,
             status: a.status,
             tags: a.tags,
-            last_seen: a.last_seen.map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
-            last_heartbeat: a.last_heartbeat.map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
+            last_seen: a
+                .last_seen
+                .map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
+            last_heartbeat: a
+                .last_heartbeat
+                .map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
             current_job_id: a.current_job_id,
             created_at: DateTime::<Utc>::from_naive_utc_and_offset(a.created_at, Utc).to_rfc3339(),
         })
@@ -168,7 +177,11 @@ pub async fn admin_get_token(
             .collect::<Vec<_>>()
             .join("");
 
-        let label = job.step_config.get("label").and_then(|v| v.as_str()).map(|s| s.to_string());
+        let label = job
+            .step_config
+            .get("label")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
         let agent_name = job.agent_id.and_then(|aid| agents_map.get(&aid).cloned());
 
         let job_resp = AdminJobResponse {
@@ -178,13 +191,21 @@ pub async fn admin_get_token(
             agent_name,
             state: job.state,
             exit_status: job.exit_status,
-            started_at: job.started_at.map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
-            finished_at: job.finished_at.map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
-            created_at: DateTime::<Utc>::from_naive_utc_and_offset(job.created_at, Utc).to_rfc3339(),
+            started_at: job
+                .started_at
+                .map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
+            finished_at: job
+                .finished_at
+                .map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
+            created_at: DateTime::<Utc>::from_naive_utc_and_offset(job.created_at, Utc)
+                .to_rfc3339(),
             label,
         };
 
-        jobs_with_logs.push(AdminJobWithLogsResponse { job: job_resp, logs });
+        jobs_with_logs.push(AdminJobWithLogsResponse {
+            job: job_resp,
+            logs,
+        });
     }
 
     Ok(Json(AdminAgentTokenDetailResponse {

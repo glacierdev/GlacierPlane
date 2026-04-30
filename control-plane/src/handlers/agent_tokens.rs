@@ -43,7 +43,10 @@ async fn map_agent_response(state: &Arc<AppState>, agent: crate::db::Agent) -> A
         None
     };
 
-    let user_agent = format!("glacier-agent/{} ({}/{})", agent.version, agent.os, agent.arch);
+    let user_agent = format!(
+        "glacier-agent/{} ({}/{})",
+        agent.version, agent.os, agent.arch
+    );
 
     AgentResponse {
         id: agent.id,
@@ -80,7 +83,10 @@ pub async fn list_user_agent_tokens(
     let (_user, org_id) = get_user_and_org_by_slug(&state, &headers, &org_slug).await?;
     let (page, per_page, limit, offset) = paginate_params(&pagination);
     let total = state.db.count_agent_tokens_by_organization(org_id).await?;
-    let tokens = state.db.get_agent_tokens_by_organization_paginated(org_id, limit, offset).await?;
+    let tokens = state
+        .db
+        .get_agent_tokens_by_organization_paginated(org_id, limit, offset)
+        .await?;
 
     let mut response: Vec<AgentTokenResponse> = Vec::new();
 
@@ -94,15 +100,24 @@ pub async fn list_user_agent_tokens(
             description: token.description,
             token_preview: token_preview(&token.token),
             token: None,
-            expires_at: token.expires_at.map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
-            created_at: DateTime::<Utc>::from_naive_utc_and_offset(token.created_at, Utc).to_rfc3339(),
+            expires_at: token
+                .expires_at
+                .map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
+            created_at: DateTime::<Utc>::from_naive_utc_and_offset(token.created_at, Utc)
+                .to_rfc3339(),
             agents_count,
             connected_count,
             running_count,
         });
     }
 
-    Ok(paginated_response(response, page, per_page, total, uri.path()))
+    Ok(paginated_response(
+        response,
+        page,
+        per_page,
+        total,
+        uri.path(),
+    ))
 }
 
 pub async fn create_user_agent_token(
@@ -114,15 +129,29 @@ pub async fn create_user_agent_token(
     let (user, org_id) = get_user_and_org_by_slug(&state, &headers, &org_slug).await?;
 
     if payload.name.is_empty() {
-        return Err(AppError::Http(StatusCode::BAD_REQUEST, "Name is required".into()));
+        return Err(AppError::Http(
+            StatusCode::BAD_REQUEST,
+            "Name is required".into(),
+        ));
     }
 
     let token_value = generate_secure_token(32);
-    let token = state.db
-        .create_agent_token_for_user(user.id, Some(org_id), &token_value, &payload.name, payload.description.as_deref())
+    let token = state
+        .db
+        .create_agent_token_for_user(
+            user.id,
+            Some(org_id),
+            &token_value,
+            &payload.name,
+            payload.description.as_deref(),
+        )
         .await?;
 
-    tracing::info!("Agent token created: {} (id: {})", token.name.as_deref().unwrap_or(""), token.id);
+    tracing::info!(
+        "Agent token created: {} (id: {})",
+        token.name.as_deref().unwrap_or(""),
+        token.id
+    );
 
     let response = AgentTokenResponse {
         id: token.id,
@@ -130,7 +159,9 @@ pub async fn create_user_agent_token(
         description: token.description,
         token_preview: token_preview(&token_value),
         token: Some(token_value),
-        expires_at: token.expires_at.map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
+        expires_at: token
+            .expires_at
+            .map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
         created_at: DateTime::<Utc>::from_naive_utc_and_offset(token.created_at, Utc).to_rfc3339(),
         agents_count: 0,
         connected_count: 0,
@@ -147,11 +178,17 @@ pub async fn get_user_agent_token(
 ) -> Result<impl IntoResponse, AppError> {
     let (_user, org_id) = get_user_and_org_by_slug(&state, &headers, &org_slug).await?;
 
-    let token = state.db.get_agent_token_by_id(token_id).await
+    let token = state
+        .db
+        .get_agent_token_by_id(token_id)
+        .await
         .map_err(|_| AppError::Http(StatusCode::NOT_FOUND, "Token not found".into()))?;
 
     if token.organization_id != Some(org_id) {
-        return Err(AppError::Http(StatusCode::NOT_FOUND, "Token not found".into()));
+        return Err(AppError::Http(
+            StatusCode::NOT_FOUND,
+            "Token not found".into(),
+        ));
     }
 
     let agents = state.db.get_agents_by_registration_token(token.id).await?;
@@ -169,8 +206,11 @@ pub async fn get_user_agent_token(
             description: token.description,
             token_preview: token_preview(&token.token),
             token: None,
-            expires_at: token.expires_at.map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
-            created_at: DateTime::<Utc>::from_naive_utc_and_offset(token.created_at, Utc).to_rfc3339(),
+            expires_at: token
+                .expires_at
+                .map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc).to_rfc3339()),
+            created_at: DateTime::<Utc>::from_naive_utc_and_offset(token.created_at, Utc)
+                .to_rfc3339(),
             agents_count,
             connected_count,
             running_count,
@@ -188,20 +228,35 @@ pub async fn delete_user_agent_token(
 ) -> Result<impl IntoResponse, AppError> {
     let (user, org_id) = get_user_and_org_by_slug(&state, &headers, &org_slug).await?;
 
-    let token = state.db.get_agent_token_by_id(token_id).await
+    let token = state
+        .db
+        .get_agent_token_by_id(token_id)
+        .await
         .map_err(|_| AppError::Http(StatusCode::NOT_FOUND, "Token not found".into()))?;
 
     if token.organization_id != Some(org_id) {
-        return Err(AppError::Http(StatusCode::NOT_FOUND, "Token not found".into()));
+        return Err(AppError::Http(
+            StatusCode::NOT_FOUND,
+            "Token not found".into(),
+        ));
     }
 
     let (deleted, agents_deleted) = state.db.delete_agent_token(token_id, user.id).await?;
     if !deleted {
-        return Err(AppError::Http(StatusCode::NOT_FOUND, "Token not found".into()));
+        return Err(AppError::Http(
+            StatusCode::NOT_FOUND,
+            "Token not found".into(),
+        ));
     }
 
-    tracing::info!("Agent token deleted: {} (deleted {} agents)", token_id, agents_deleted);
-    Ok(Json(json!({ "message": "Token deleted successfully", "agents_deleted": agents_deleted })))
+    tracing::info!(
+        "Agent token deleted: {} (deleted {} agents)",
+        token_id,
+        agents_deleted
+    );
+    Ok(Json(
+        json!({ "message": "Token deleted successfully", "agents_deleted": agents_deleted }),
+    ))
 }
 
 pub async fn list_user_agents(
@@ -214,12 +269,21 @@ pub async fn list_user_agents(
     let (_user, org_id) = get_user_and_org_by_slug(&state, &headers, &org_slug).await?;
     let (page, per_page, limit, offset) = paginate_params(&pagination);
     let total = state.db.count_agents_by_organization(org_id).await?;
-    let agents = state.db.get_agents_by_organization_paginated(org_id, limit, offset).await?;
+    let agents = state
+        .db
+        .get_agents_by_organization_paginated(org_id, limit, offset)
+        .await?;
 
     let mut response: Vec<AgentResponse> = Vec::new();
     for agent in agents {
         response.push(map_agent_response(&state, agent).await);
     }
 
-    Ok(paginated_response(response, page, per_page, total, uri.path()))
+    Ok(paginated_response(
+        response,
+        page,
+        per_page,
+        total,
+        uri.path(),
+    ))
 }

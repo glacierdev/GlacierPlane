@@ -33,14 +33,16 @@ impl IntoResponse for AppError {
                         if let Some(code) = db_err.code() {
                             match code.as_ref() {
                                 "23505" => "A record with this value already exists".to_string(),
-                                "42P01" => "Database table not found. Please run migrations.".to_string(),
-                                _ => format!("Database error: {}", db_err.message())
+                                "42P01" => {
+                                    "Database table not found. Please run migrations.".to_string()
+                                }
+                                _ => format!("Database error: {}", db_err.message()),
                             }
                         } else {
                             format!("Database error: {}", db_err.message())
                         }
                     }
-                    _ => format!("Database error: {}", err)
+                    _ => format!("Database error: {}", err),
                 };
                 (StatusCode::INTERNAL_SERVER_ERROR, msg)
             }

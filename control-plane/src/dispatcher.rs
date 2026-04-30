@@ -30,7 +30,9 @@ impl Dispatcher {
         let jobs = self.db.get_runnable_jobs().await?;
         tracing::debug!(
             "Found {} runnable jobs for agent {} (queue_id: {:?})",
-            jobs.len(), agent.name, agent.queue_id
+            jobs.len(),
+            agent.name,
+            agent.queue_id
         );
 
         for job in jobs {
@@ -70,7 +72,9 @@ impl Dispatcher {
                     let Some(agent_queue_id) = agent.queue_id else {
                         tracing::debug!(
                             "Job {} requires queue '{}', but agent {} has no queue assigned",
-                            job.id, queue.key, agent.name
+                            job.id,
+                            queue.key,
+                            agent.name
                         );
                         continue;
                     };
@@ -95,12 +99,16 @@ impl Dispatcher {
 
             if !is_pipeline_upload {
                 if let Some(queue_id) = agent.queue_id {
-                    match self.db.has_higher_priority_agent_in_queue(
-                        queue_id,
-                        agent.id,
-                        agent.priority,
-                        PRIORITY_RECENT_SECS,
-                    ).await {
+                    match self
+                        .db
+                        .has_higher_priority_agent_in_queue(
+                            queue_id,
+                            agent.id,
+                            agent.priority,
+                            PRIORITY_RECENT_SECS,
+                        )
+                        .await
+                    {
                         Ok(true) => {
                             tracing::debug!(
                                 "Holding job {} — a higher-priority agent is available in queue (agent {} priority: {:?})",
@@ -125,7 +133,8 @@ impl Dispatcher {
     async fn resolve_job_queue(&self, job: &Job) -> Result<JobQueueResult, AppError> {
         tracing::debug!(
             "Resolving queue for job {} | step_config: {:?}",
-            job.id, job.step_config
+            job.id,
+            job.step_config
         );
 
         let agents_config = job.step_config.get("agents");
@@ -153,32 +162,40 @@ impl Dispatcher {
             let build = self.db.get_build_by_id(job.build_id).await?;
             tracing::debug!(
                 "Job {} belongs to build {} (pipeline: {})",
-                job.id, build.id, build.pipeline_slug
+                job.id,
+                build.id,
+                build.pipeline_slug
             );
 
             let pipeline = self.db.get_pipeline_by_slug(&build.pipeline_slug).await?;
             tracing::debug!(
                 "Pipeline '{}' (id: {}) has user_id: {:?}",
-                pipeline.slug, pipeline.id, pipeline.user_id
+                pipeline.slug,
+                pipeline.id,
+                pipeline.user_id
             );
 
             if let Some(org_id) = pipeline.organization_id {
                 tracing::debug!(
                     "Looking for queue '{}' in organization {}",
-                    queue_key, org_id
+                    queue_key,
+                    org_id
                 );
                 match self.db.get_queue_by_key_and_org(&queue_key, org_id).await {
                     Ok(queue) => {
                         tracing::info!(
                             "Found queue '{}' (id: {}) for job {}",
-                            queue.key, queue.id, job.id
+                            queue.key,
+                            queue.id,
+                            job.id
                         );
                         return Ok(JobQueueResult::Queue(queue));
                     }
                     Err(sqlx::Error::RowNotFound) => {
                         tracing::debug!(
                             "Queue '{}' not found for org {}, trying user lookup",
-                            queue_key, org_id
+                            queue_key,
+                            org_id
                         );
                     }
                     Err(e) => {
@@ -191,20 +208,25 @@ impl Dispatcher {
             if let Some(user_id) = pipeline.user_id {
                 tracing::debug!(
                     "Looking for queue '{}' owned by user {}",
-                    queue_key, user_id
+                    queue_key,
+                    user_id
                 );
                 match self.db.get_queue_by_key_and_user(&queue_key, user_id).await {
                     Ok(queue) => {
                         tracing::info!(
                             "Found queue '{}' (id: {}) for job {}",
-                            queue.key, queue.id, job.id
+                            queue.key,
+                            queue.id,
+                            job.id
                         );
                         return Ok(JobQueueResult::Queue(queue));
                     }
                     Err(sqlx::Error::RowNotFound) => {
                         tracing::warn!(
                             "Queue '{}' not found for user {} (job {})",
-                            queue_key, user_id, job.id
+                            queue_key,
+                            user_id,
+                            job.id
                         );
                         return Ok(JobQueueResult::QueueNotFound(queue_key));
                     }
@@ -222,28 +244,35 @@ impl Dispatcher {
             return Ok(JobQueueResult::QueueNotFound(queue_key));
         }
 
-        tracing::debug!("Job {} has no queue specified, checking pipeline default", job.id);
+        tracing::debug!(
+            "Job {} has no queue specified, checking pipeline default",
+            job.id
+        );
 
         let build = self.db.get_build_by_id(job.build_id).await?;
         let pipeline = self.db.get_pipeline_by_slug(&build.pipeline_slug).await?;
 
         tracing::debug!(
             "Checking default queue for pipeline '{}' (id: {})",
-            pipeline.slug, pipeline.id
+            pipeline.slug,
+            pipeline.id
         );
 
         match self.db.get_default_queue_for_pipeline(pipeline.id).await {
             Ok(queue) => {
                 tracing::info!(
                     "Using default queue '{}' (id: {}) for job {}",
-                    queue.key, queue.id, job.id
+                    queue.key,
+                    queue.id,
+                    job.id
                 );
                 Ok(JobQueueResult::Queue(queue))
             }
             Err(sqlx::Error::RowNotFound) => {
                 tracing::warn!(
                     "No default queue found for pipeline '{}' (id: {})",
-                    pipeline.slug, pipeline.id
+                    pipeline.slug,
+                    pipeline.id
                 );
                 Ok(JobQueueResult::NoQueue)
             }
@@ -276,7 +305,9 @@ impl Dispatcher {
                 if agents_in_queue.is_empty() {
                     tracing::warn!(
                         "Job {} failed: No agents in queue '{}' (id: {})",
-                        job.id, queue.key, queue.id
+                        job.id,
+                        queue.key,
+                        queue.id
                     );
                     self.fail_job(job, "No agents in queue").await?;
                     return Ok(true);
@@ -289,7 +320,8 @@ impl Dispatcher {
             }
             JobQueueResult::QueueNotFound(key) => {
                 tracing::warn!("Job {} failed: Queue '{}' not found", job.id, key);
-                self.fail_job(job, &format!("Queue '{}' not found", key)).await?;
+                self.fail_job(job, &format!("Queue '{}' not found", key))
+                    .await?;
                 return Ok(true);
             }
         }
@@ -307,22 +339,20 @@ impl Dispatcher {
 
         for dep_id in deps {
             match self.db.get_job_by_id(dep_id).await {
-                Ok(dep_job) => {
-                    match classify_dependency_state(&dep_job.state) {
-                        DependencyStatus::Satisfied => {}
-                        DependencyStatus::Pending => return Ok(false),
-                        DependencyStatus::Failed => {
-                            tracing::warn!(
+                Ok(dep_job) => match classify_dependency_state(&dep_job.state) {
+                    DependencyStatus::Satisfied => {}
+                    DependencyStatus::Pending => return Ok(false),
+                    DependencyStatus::Failed => {
+                        tracing::warn!(
                                 "Dependency job {} is in terminal failure state '{}' for job {}, marking dependent as failed",
                                 dep_id,
                                 dep_job.state,
                                 job.id
                             );
-                            self.fail_job(job, "dependency_failed").await?;
-                            return Ok(false);
-                        }
+                        self.fail_job(job, "dependency_failed").await?;
+                        return Ok(false);
                     }
-                }
+                },
                 Err(sqlx::Error::RowNotFound) => {
                     tracing::warn!(
                         "Dependency job {} not found for job {}, marking job as failed",
@@ -569,10 +599,7 @@ mod tests {
     #[test]
     fn matching_multiple_tags() {
         let job = make_job(json!({"agents": {"os": "linux", "arch": "amd64"}}));
-        let agent = make_agent(Some(vec![
-            "os=linux".to_string(),
-            "arch=amd64".to_string(),
-        ]));
+        let agent = make_agent(Some(vec!["os=linux".to_string(), "arch=amd64".to_string()]));
         assert!(tags_match(&job, &agent));
     }
 

@@ -48,11 +48,20 @@ pub(crate) fn convert_job_to_response(
     env.insert("BUILDKITE_COMMAND_EVAL".into(), json!("true"));
     env.insert("BUILDKITE_JOB_ID".into(), json!(job.id.to_string()));
     env.insert("BUILDKITE_BUILD_ID".into(), json!(build.id.to_string()));
-    env.insert("BUILDKITE_BUILD_NUMBER".into(), json!(build.number.to_string()));
-    env.insert("BUILDKITE_PIPELINE_SLUG".into(), json!(&build.pipeline_slug));
+    env.insert(
+        "BUILDKITE_BUILD_NUMBER".into(),
+        json!(build.number.to_string()),
+    );
+    env.insert(
+        "BUILDKITE_PIPELINE_SLUG".into(),
+        json!(&build.pipeline_slug),
+    );
     env.insert("BUILDKITE_BRANCH".into(), json!(&build.branch));
     env.insert("BUILDKITE_COMMIT".into(), json!(&build.commit));
-    env.insert("BUILDKITE_MESSAGE".into(), json!(build.message.as_deref().unwrap_or("")));
+    env.insert(
+        "BUILDKITE_MESSAGE".into(),
+        json!(build.message.as_deref().unwrap_or("")),
+    );
     env.insert(
         "BUILDKITE_BUILD_AUTHOR".into(),
         json!(build.author_name.as_deref().unwrap_or("")),
@@ -62,7 +71,10 @@ pub(crate) fn convert_job_to_response(
         json!(build.author_email.as_deref().unwrap_or("")),
     );
     env.insert("BUILDKITE_SOURCE".into(), json!("webhook"));
-    env.insert("BUILDKITE_LABEL".into(), json!(step.label.as_deref().unwrap_or("")));
+    env.insert(
+        "BUILDKITE_LABEL".into(),
+        json!(step.label.as_deref().unwrap_or("")),
+    );
     env.insert("BUILDKITE_AGENT_ID".into(), json!(agent.uuid));
     env.insert("BUILDKITE_AGENT_NAME".into(), json!(&agent.name));
     env.insert("BUILDKITE_AGENT_ACCESS_TOKEN".into(), json!(access_token));
@@ -82,7 +94,10 @@ pub(crate) fn convert_job_to_response(
     if let Some(pr_num) = build.pull_request_number {
         env.insert("BUILDKITE_PULL_REQUEST".into(), json!(pr_num.to_string()));
         if let Some(ref wp) = build.webhook_payload {
-            if let Some(base) = wp.pointer("/pull_request/base/ref").and_then(|v| v.as_str()) {
+            if let Some(base) = wp
+                .pointer("/pull_request/base/ref")
+                .and_then(|v| v.as_str())
+            {
                 env.insert("BUILDKITE_PULL_REQUEST_BASE_BRANCH".into(), json!(base));
             }
             let pr_repo = wp
@@ -96,7 +111,10 @@ pub(crate) fn convert_job_to_response(
                 env.insert("BUILDKITE_PULL_REQUEST_REPO".into(), json!(repo));
             }
             if let Some(draft) = wp.pointer("/pull_request/draft").and_then(|v| v.as_bool()) {
-                env.insert("BUILDKITE_PULL_REQUEST_DRAFT".into(), json!(draft.to_string()));
+                env.insert(
+                    "BUILDKITE_PULL_REQUEST_DRAFT".into(),
+                    json!(draft.to_string()),
+                );
             }
         }
     } else {

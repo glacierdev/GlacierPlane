@@ -3,11 +3,7 @@ use std::sync::Arc;
 use axum::http::{HeaderMap, StatusCode};
 use uuid::Uuid;
 
-use crate::{
-    db::User,
-    error::AppError,
-    AppState,
-};
+use crate::{db::User, error::AppError, AppState};
 
 pub(crate) fn extract_session_token(headers: &HeaderMap) -> Option<String> {
     if let Some(auth_header) = headers.get(axum::http::header::AUTHORIZATION) {
@@ -40,7 +36,12 @@ pub(crate) async fn get_authenticated_user(
         .db
         .get_user_by_session_token(&token)
         .await
-        .map_err(|_| AppError::Http(StatusCode::UNAUTHORIZED, "Invalid or expired session".into()))
+        .map_err(|_| {
+            AppError::Http(
+                StatusCode::UNAUTHORIZED,
+                "Invalid or expired session".into(),
+            )
+        })
 }
 
 pub(crate) async fn get_user_and_org_by_slug(
@@ -58,7 +59,12 @@ pub(crate) async fn get_user_and_org_by_slug(
         .db
         .get_organization_member(org.id, user.id)
         .await
-        .map_err(|_| AppError::Http(StatusCode::FORBIDDEN, "Not a member of this organization".into()))?;
+        .map_err(|_| {
+            AppError::Http(
+                StatusCode::FORBIDDEN,
+                "Not a member of this organization".into(),
+            )
+        })?;
     Ok((user, org.id))
 }
 
@@ -77,7 +83,12 @@ pub(crate) async fn get_user_and_org_admin_by_slug(
         .db
         .get_organization_member(org.id, user.id)
         .await
-        .map_err(|_| AppError::Http(StatusCode::FORBIDDEN, "Not a member of this organization".into()))?;
+        .map_err(|_| {
+            AppError::Http(
+                StatusCode::FORBIDDEN,
+                "Not a member of this organization".into(),
+            )
+        })?;
     if member.role != "owner" && member.role != "admin" {
         return Err(AppError::Http(
             StatusCode::FORBIDDEN,

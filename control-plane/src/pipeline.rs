@@ -73,7 +73,8 @@ mod tests {
     #[test]
     fn parse_pipeline_with_agents() {
         let parser = Parser::new();
-        let yaml = b"steps:\n  - command: echo hello\n    agents:\n      queue: default\n      os: linux";
+        let yaml =
+            b"steps:\n  - command: echo hello\n    agents:\n      queue: default\n      os: linux";
         let steps = parser.parse(yaml).unwrap();
         assert_eq!(steps.len(), 1);
         let agents = steps[0].get("agents").unwrap();
@@ -90,10 +91,7 @@ mod tests {
             steps[0].get("label").unwrap().as_str().unwrap(),
             ":rust: build"
         );
-        assert_eq!(
-            steps[0].get("key").unwrap().as_str().unwrap(),
-            "build"
-        );
+        assert_eq!(steps[0].get("key").unwrap().as_str().unwrap(), "build");
     }
 
     #[test]
@@ -102,7 +100,11 @@ mod tests {
         let yaml = b"steps:\n  - command: cargo test\n    timeout_in_minutes: 10";
         let steps = parser.parse(yaml).unwrap();
         assert_eq!(
-            steps[0].get("timeout_in_minutes").unwrap().as_i64().unwrap(),
+            steps[0]
+                .get("timeout_in_minutes")
+                .unwrap()
+                .as_i64()
+                .unwrap(),
             10
         );
     }
@@ -115,4 +117,3 @@ mod tests {
         assert!(steps.is_empty());
     }
 }
-

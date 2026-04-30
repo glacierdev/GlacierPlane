@@ -103,7 +103,11 @@ impl Database {
         Ok(())
     }
 
-    pub async fn get_jobs_for_token_agents(&self, token_id: Uuid, limit: i64) -> Result<Vec<Job>, sqlx::Error> {
+    pub async fn get_jobs_for_token_agents(
+        &self,
+        token_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<Job>, sqlx::Error> {
         sqlx::query_as::<_, Job>(
             r#"SELECT j.id, j.build_id, j.step_config, j.state, j.agent_id, j.job_token, j.env,
                       j.depends_on, j.exit_status, j.signal, j.signal_reason, j.started_at, j.finished_at,

@@ -7,7 +7,11 @@ use super::{
 };
 
 impl Database {
-    pub async fn create_organization(&self, name: &str, slug: &str) -> Result<Organization, sqlx::Error> {
+    pub async fn create_organization(
+        &self,
+        name: &str,
+        slug: &str,
+    ) -> Result<Organization, sqlx::Error> {
         sqlx::query_as::<_, Organization>(
             r#"INSERT INTO organizations (name, slug)
                VALUES ($1, $2)
@@ -39,22 +43,35 @@ impl Database {
         .await
     }
 
-    pub async fn get_organizations_for_user(&self, user_id: Uuid) -> Result<Vec<(Organization, String)>, sqlx::Error> {
-        let rows = sqlx::query_as::<_, (Uuid, String, String, NaiveDateTime, NaiveDateTime, String)>(
-            r#"SELECT o.id, o.name, o.slug, o.created_at, o.updated_at, om.role
+    pub async fn get_organizations_for_user(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<(Organization, String)>, sqlx::Error> {
+        let rows =
+            sqlx::query_as::<_, (Uuid, String, String, NaiveDateTime, NaiveDateTime, String)>(
+                r#"SELECT o.id, o.name, o.slug, o.created_at, o.updated_at, om.role
                FROM organizations o
                INNER JOIN organization_members om ON om.organization_id = o.id
                WHERE om.user_id = $1
                ORDER BY o.name ASC"#,
-        )
-        .bind(user_id)
-        .fetch_all(&self.pool)
-        .await?;
+            )
+            .bind(user_id)
+            .fetch_all(&self.pool)
+            .await?;
 
         Ok(rows
             .into_iter()
             .map(|(id, name, slug, created_at, updated_at, role)| {
-                (Organization { id, name, slug, created_at, updated_at }, role)
+                (
+                    Organization {
+                        id,
+                        name,
+                        slug,
+                        created_at,
+                        updated_at,
+                    },
+                    role,
+                )
             })
             .collect())
     }
@@ -217,7 +234,10 @@ impl Database {
         .await
     }
 
-    pub async fn get_pipelines_by_organization(&self, org_id: Uuid) -> Result<Vec<Pipeline>, sqlx::Error> {
+    pub async fn get_pipelines_by_organization(
+        &self,
+        org_id: Uuid,
+    ) -> Result<Vec<Pipeline>, sqlx::Error> {
         sqlx::query_as::<_, Pipeline>(
             r#"SELECT id, slug, repository_url, webhook_secret, config_cache,
                       user_id, organization_id, name, description, default_branch, created_at, updated_at
@@ -230,7 +250,11 @@ impl Database {
         .await
     }
 
-    pub async fn get_pipeline_by_id_and_org(&self, id: Uuid, org_id: Uuid) -> Result<Pipeline, sqlx::Error> {
+    pub async fn get_pipeline_by_id_and_org(
+        &self,
+        id: Uuid,
+        org_id: Uuid,
+    ) -> Result<Pipeline, sqlx::Error> {
         sqlx::query_as::<_, Pipeline>(
             r#"SELECT id, slug, repository_url, webhook_secret, config_cache,
                       user_id, organization_id, name, description, default_branch, created_at, updated_at
@@ -243,7 +267,11 @@ impl Database {
         .await
     }
 
-    pub async fn delete_pipeline_by_org(&self, id: Uuid, org_id: Uuid) -> Result<bool, sqlx::Error> {
+    pub async fn delete_pipeline_by_org(
+        &self,
+        id: Uuid,
+        org_id: Uuid,
+    ) -> Result<bool, sqlx::Error> {
         let result = sqlx::query(r#"DELETE FROM pipelines WHERE id = $1 AND organization_id = $2"#)
             .bind(id)
             .bind(org_id)
@@ -280,7 +308,10 @@ impl Database {
         .await
     }
 
-    pub async fn get_queues_by_organization(&self, org_id: Uuid) -> Result<Vec<Queue>, sqlx::Error> {
+    pub async fn get_queues_by_organization(
+        &self,
+        org_id: Uuid,
+    ) -> Result<Vec<Queue>, sqlx::Error> {
         sqlx::query_as::<_, Queue>(
             r#"SELECT id, user_id, organization_id, pipeline_id, name, key, description, is_default, created_at, updated_at
                FROM queues WHERE organization_id = $1
@@ -291,7 +322,11 @@ impl Database {
         .await
     }
 
-    pub async fn get_queue_by_id_and_org(&self, id: Uuid, org_id: Uuid) -> Result<Queue, sqlx::Error> {
+    pub async fn get_queue_by_id_and_org(
+        &self,
+        id: Uuid,
+        org_id: Uuid,
+    ) -> Result<Queue, sqlx::Error> {
         sqlx::query_as::<_, Queue>(
             r#"SELECT id, user_id, organization_id, pipeline_id, name, key, description, is_default, created_at, updated_at
                FROM queues WHERE id = $1 AND organization_id = $2"#,
@@ -302,7 +337,11 @@ impl Database {
         .await
     }
 
-    pub async fn get_queue_by_key_and_org(&self, key: &str, org_id: Uuid) -> Result<Queue, sqlx::Error> {
+    pub async fn get_queue_by_key_and_org(
+        &self,
+        key: &str,
+        org_id: Uuid,
+    ) -> Result<Queue, sqlx::Error> {
         sqlx::query_as::<_, Queue>(
             r#"SELECT id, user_id, organization_id, pipeline_id, name, key, description, is_default, created_at, updated_at
                FROM queues WHERE key = $1 AND organization_id = $2"#,
@@ -347,7 +386,10 @@ impl Database {
         Ok(result.rows_affected() > 0)
     }
 
-    pub async fn get_agent_tokens_by_organization(&self, org_id: Uuid) -> Result<Vec<AgentToken>, sqlx::Error> {
+    pub async fn get_agent_tokens_by_organization(
+        &self,
+        org_id: Uuid,
+    ) -> Result<Vec<AgentToken>, sqlx::Error> {
         sqlx::query_as::<_, AgentToken>(
             r#"SELECT id, token, name, description, user_id, organization_id, expires_at, created_at 
                FROM agent_tokens 
@@ -359,7 +401,11 @@ impl Database {
         .await
     }
 
-    pub async fn get_pipeline_by_slug_and_org(&self, slug: &str, org_id: Uuid) -> Result<Pipeline, sqlx::Error> {
+    pub async fn get_pipeline_by_slug_and_org(
+        &self,
+        slug: &str,
+        org_id: Uuid,
+    ) -> Result<Pipeline, sqlx::Error> {
         sqlx::query_as::<_, Pipeline>(
             r#"SELECT id, slug, repository_url, webhook_secret, config_cache,
                       user_id, organization_id, name, description, default_branch, created_at, updated_at
@@ -372,7 +418,10 @@ impl Database {
         .await
     }
 
-    pub async fn get_agents_by_organization(&self, org_id: Uuid) -> Result<Vec<Agent>, sqlx::Error> {
+    pub async fn get_agents_by_organization(
+        &self,
+        org_id: Uuid,
+    ) -> Result<Vec<Agent>, sqlx::Error> {
         sqlx::query_as::<_, Agent>(
             r#"SELECT id, uuid, name, hostname, os, arch, version, build, tags, priority,
                       status, registration_token_id, user_id, organization_id, queue_id, last_seen, last_heartbeat,
@@ -386,7 +435,11 @@ impl Database {
         .await
     }
 
-    pub async fn delete_agent_token_by_org(&self, id: Uuid, org_id: Uuid) -> Result<(bool, u64), sqlx::Error> {
+    pub async fn delete_agent_token_by_org(
+        &self,
+        id: Uuid,
+        org_id: Uuid,
+    ) -> Result<(bool, u64), sqlx::Error> {
         self.delete_agent_token_scoped(id, None, Some(org_id)).await
     }
 
@@ -405,24 +458,34 @@ impl Database {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<(Organization, String)>, sqlx::Error> {
-        let rows = sqlx::query_as::<_, (Uuid, String, String, NaiveDateTime, NaiveDateTime, String)>(
-            r#"SELECT o.id, o.name, o.slug, o.created_at, o.updated_at, om.role
+        let rows =
+            sqlx::query_as::<_, (Uuid, String, String, NaiveDateTime, NaiveDateTime, String)>(
+                r#"SELECT o.id, o.name, o.slug, o.created_at, o.updated_at, om.role
                FROM organizations o
                INNER JOIN organization_members om ON om.organization_id = o.id
                WHERE om.user_id = $1
                ORDER BY o.name ASC
                LIMIT $2 OFFSET $3"#,
-        )
-        .bind(user_id)
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&self.pool)
-        .await?;
+            )
+            .bind(user_id)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&self.pool)
+            .await?;
 
         Ok(rows
             .into_iter()
             .map(|(id, name, slug, created_at, updated_at, role)| {
-                (Organization { id, name, slug, created_at, updated_at }, role)
+                (
+                    Organization {
+                        id,
+                        name,
+                        slug,
+                        created_at,
+                        updated_at,
+                    },
+                    role,
+                )
             })
             .collect())
     }
@@ -485,7 +548,10 @@ impl Database {
         .await
     }
 
-    pub async fn count_agent_tokens_by_organization(&self, org_id: Uuid) -> Result<i64, sqlx::Error> {
+    pub async fn count_agent_tokens_by_organization(
+        &self,
+        org_id: Uuid,
+    ) -> Result<i64, sqlx::Error> {
         sqlx::query_scalar::<_, i64>(
             r#"SELECT COUNT(*)::BIGINT FROM agent_tokens WHERE organization_id = $1"#,
         )

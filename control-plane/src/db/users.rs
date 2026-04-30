@@ -4,7 +4,12 @@ use uuid::Uuid;
 use super::{Database, User, UserSession};
 
 impl Database {
-    pub async fn create_user(&self, email: &str, name: &str, password_hash: &str) -> Result<User, sqlx::Error> {
+    pub async fn create_user(
+        &self,
+        email: &str,
+        name: &str,
+        password_hash: &str,
+    ) -> Result<User, sqlx::Error> {
         sqlx::query_as::<_, User>(
             r#"INSERT INTO users (email, name, password_hash)
                VALUES ($1, $2, $3)
@@ -38,16 +43,19 @@ impl Database {
     }
 
     pub async fn user_exists(&self, email: &str) -> Result<bool, sqlx::Error> {
-        let count = sqlx::query_scalar::<_, i64>(
-            r#"SELECT COUNT(*) FROM users WHERE email = $1"#,
-        )
-        .bind(email)
-        .fetch_one(&self.pool)
-        .await?;
+        let count = sqlx::query_scalar::<_, i64>(r#"SELECT COUNT(*) FROM users WHERE email = $1"#)
+            .bind(email)
+            .fetch_one(&self.pool)
+            .await?;
         Ok(count > 0)
     }
 
-    pub async fn create_user_session(&self, user_id: Uuid, token: &str, expires_at: NaiveDateTime) -> Result<UserSession, sqlx::Error> {
+    pub async fn create_user_session(
+        &self,
+        user_id: Uuid,
+        token: &str,
+        expires_at: NaiveDateTime,
+    ) -> Result<UserSession, sqlx::Error> {
         sqlx::query_as::<_, UserSession>(
             r#"INSERT INTO user_sessions (user_id, token, expires_at)
                VALUES ($1, $2, $3)

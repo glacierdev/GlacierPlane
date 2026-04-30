@@ -278,7 +278,7 @@ async fn create_build_with_upload_job(
 
     let pipeline_upload_step = serde_json::json!({
         "label": ":pipeline: Pipeline Upload",
-        "command": "buildkite-agent pipeline upload",
+        "command": "if [ -f glacier.yml ]; then buildkite-agent pipeline upload glacier.yml; elif [ -f buildkite.yml ]; then buildkite-agent pipeline upload buildkite.yml; else buildkite-agent pipeline upload; fi",
         "key": "pipeline-upload"
     });
 

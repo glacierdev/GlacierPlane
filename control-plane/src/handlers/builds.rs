@@ -125,10 +125,7 @@ pub async fn list_all_builds(
     let filter = params.to_filter();
     let pagination = params.to_pagination();
     let (page, per_page, limit, offset) = paginate_params(&pagination);
-    let total = state
-        .db
-        .count_all_builds_filtered(user.id, &filter)
-        .await?;
+    let total = state.db.count_all_builds_filtered(user.id, &filter).await?;
     let builds = state
         .db
         .get_all_builds_filtered(user.id, &filter, limit, offset)

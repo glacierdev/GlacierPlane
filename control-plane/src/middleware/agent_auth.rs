@@ -27,7 +27,12 @@ pub async fn auth_middleware(
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
         .and_then(parse_authorization_token)
-        .ok_or_else(|| AppError::Http(StatusCode::UNAUTHORIZED, "Missing authorization header".into()))?;
+        .ok_or_else(|| {
+            AppError::Http(
+                StatusCode::UNAUTHORIZED,
+                "Missing authorization header".into(),
+            )
+        })?;
 
     let agent = state
         .db

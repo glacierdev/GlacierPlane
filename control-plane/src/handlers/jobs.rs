@@ -54,9 +54,19 @@ pub async fn get_job(
     let job = load_job_for_agent(&state, job_id, agent.id).await?;
 
     let build = state.db.get_build_by_id(job.build_id).await?;
-    let pipeline = state.db.get_pipeline_by_slug(&build.pipeline_slug).await.ok();
+    let pipeline = state
+        .db
+        .get_pipeline_by_slug(&build.pipeline_slug)
+        .await
+        .ok();
 
-    let job_resp = convert_job_to_response(&job, &build, pipeline.as_ref(), agent, &auth_agent.access_token)?;
+    let job_resp = convert_job_to_response(
+        &job,
+        &build,
+        pipeline.as_ref(),
+        agent,
+        &auth_agent.access_token,
+    )?;
     Ok(Json(job_resp))
 }
 
@@ -72,9 +82,19 @@ pub async fn accept_job(
     state.db.update_job(&job).await?;
 
     let build = state.db.get_build_by_id(job.build_id).await?;
-    let pipeline = state.db.get_pipeline_by_slug(&build.pipeline_slug).await.ok();
+    let pipeline = state
+        .db
+        .get_pipeline_by_slug(&build.pipeline_slug)
+        .await
+        .ok();
 
-    let job_resp = convert_job_to_response(&job, &build, pipeline.as_ref(), agent, &auth_agent.access_token)?;
+    let job_resp = convert_job_to_response(
+        &job,
+        &build,
+        pipeline.as_ref(),
+        agent,
+        &auth_agent.access_token,
+    )?;
     Ok(Json(job_resp))
 }
 
@@ -111,7 +131,12 @@ pub async fn finish_job(
     Extension(mut agent): Extension<Agent>,
     Json(payload): Json<JobFinishRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    tracing::info!("Job {} finished by agent {} with exit_status: {:?}", job_id, agent.name, payload.exit_status);
+    tracing::info!(
+        "Job {} finished by agent {} with exit_status: {:?}",
+        job_id,
+        agent.name,
+        payload.exit_status
+    );
     let mut job = load_job_for_agent(&state, job_id, agent.id).await?;
 
     let finished_at = match payload.finished_at {
@@ -126,7 +151,9 @@ pub async fn finish_job(
     job.exit_status = payload.exit_status.clone();
     job.signal = payload.signal.clone();
     job.signal_reason = payload.signal_reason.clone();
-    job.chunks_failed_count = payload.chunks_failed_count.unwrap_or(job.chunks_failed_count);
+    job.chunks_failed_count = payload
+        .chunks_failed_count
+        .unwrap_or(job.chunks_failed_count);
     job.state = if payload.exit_status.as_deref() == Some("0") || payload.exit_status.is_none() {
         "finished".into()
     } else {
@@ -196,7 +223,10 @@ pub async fn metadata_set(
 ) -> Result<impl IntoResponse, AppError> {
     let job = load_job_for_agent(&state, job_id, agent.id).await?;
 
-    state.db.set_metadata(job.build_id, &payload.key, &payload.value).await?;
+    state
+        .db
+        .set_metadata(job.build_id, &payload.key, &payload.value)
+        .await?;
     Ok(StatusCode::OK)
 }
 
@@ -234,7 +264,11 @@ pub async fn upload_pipeline(
     Extension(agent): Extension<Agent>,
     Json(payload): Json<PipelineUploadRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    tracing::info!("Pipeline upload for job {} from agent {}", job_id, agent.name);
+    tracing::info!(
+        "Pipeline upload for job {} from agent {}",
+        job_id,
+        agent.name
+    );
     let job = load_job_for_agent(&state, job_id, agent.id).await?;
 
     let (mut steps, pipeline_agents): (Vec<serde_json::Value>, Option<serde_json::Value>) =
@@ -245,10 +279,16 @@ pub async fn upload_pipeline(
                         if let Some(steps_arr) = steps_value.as_array() {
                             steps_arr.clone()
                         } else {
-                            return Err(AppError::Http(StatusCode::BAD_REQUEST, "pipeline.steps must be an array".into()));
+                            return Err(AppError::Http(
+                                StatusCode::BAD_REQUEST,
+                                "pipeline.steps must be an array".into(),
+                            ));
                         }
                     } else {
-                        return Err(AppError::Http(StatusCode::BAD_REQUEST, "pipeline object must contain 'steps' array".into()));
+                        return Err(AppError::Http(
+                            StatusCode::BAD_REQUEST,
+                            "pipeline object must contain 'steps' array".into(),
+                        ));
                     };
                     let agents = obj.get("agents").cloned();
                     if agents.is_some() {
@@ -309,7 +349,10 @@ pub async fn upload_pipeline(
         } else if let Some(steps) = payload.steps {
             (steps, None)
         } else {
-            return Err(AppError::Http(StatusCode::BAD_REQUEST, "Either 'pipeline' or 'steps' must be provided".into()));
+            return Err(AppError::Http(
+                StatusCode::BAD_REQUEST,
+                "Either 'pipeline' or 'steps' must be provided".into(),
+            ));
         };
 
     if let Some(ref default_agents) = pipeline_agents {
@@ -317,7 +360,10 @@ pub async fn upload_pipeline(
             if let serde_json::Value::Object(ref mut step_obj) = step {
                 if !step_obj.contains_key("agents") {
                     step_obj.insert("agents".to_string(), default_agents.clone());
-                    tracing::debug!("Inherited pipeline agents into step: {:?}", step_obj.get("label"));
+                    tracing::debug!(
+                        "Inherited pipeline agents into step: {:?}",
+                        step_obj.get("label")
+                    );
                 }
             }
         }
@@ -377,7 +423,10 @@ pub async fn upload_pipeline(
         } else if let Some(label) = &parsed_step.label {
             key_to_job_id.get(label).copied()
         } else {
-            created_jobs.iter().find(|(_, s)| s == step).map(|(id, _)| *id)
+            created_jobs
+                .iter()
+                .find(|(_, s)| s == step)
+                .map(|(id, _)| *id)
         };
 
         let Some(new_job_id) = job_id else {
@@ -408,7 +457,11 @@ pub async fn upload_pipeline(
             None
         };
 
-        let state_str = if depends_on_ids.is_empty() { "scheduled" } else { "waiting" };
+        let state_str = if depends_on_ids.is_empty() {
+            "scheduled"
+        } else {
+            "waiting"
+        };
 
         let mut new_job = Job {
             id: new_job_id,
@@ -418,7 +471,11 @@ pub async fn upload_pipeline(
             agent_id: None,
             job_token: None,
             env: Some(serde_json::json!({})),
-            depends_on: if depends_on_ids.is_empty() { None } else { Some(depends_on_ids) },
+            depends_on: if depends_on_ids.is_empty() {
+                None
+            } else {
+                Some(depends_on_ids)
+            },
             exit_status: None,
             signal: None,
             signal_reason: None,
@@ -432,12 +489,20 @@ pub async fn upload_pipeline(
         };
 
         state.db.create_job(&mut new_job).await?;
-        tracing::info!("Created job {} with label: {:?}", new_job.id, parsed_step.label);
+        tracing::info!(
+            "Created job {} with label: {:?}",
+            new_job.id,
+            parsed_step.label
+        );
 
         jobs_before_wait.push(new_job_id);
     }
 
-    tracing::info!("Pipeline upload complete: created {} jobs for build {}", created_jobs.len(), build.id);
+    tracing::info!(
+        "Pipeline upload complete: created {} jobs for build {}",
+        created_jobs.len(),
+        build.id
+    );
 
     Ok(StatusCode::OK)
 }

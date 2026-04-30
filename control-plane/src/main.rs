@@ -16,9 +16,9 @@ use axum::{
     routing::{get, post, put},
     Router,
 };
-use tower_http::cors::{Any, CorsLayer};
 use pipeline::Parser;
-use tokio::{signal, net::TcpListener};
+use tokio::{net::TcpListener, signal};
+use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -36,16 +36,19 @@ pub struct AppState {
 #[tokio::main]
 async fn main() -> Result<(), error::AppError> {
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-            "control_plane=debug,axum::rejection=trace,tower_http=info".into()
-        }))
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                "control_plane=debug,axum::rejection=trace,tower_http=info".into()
+            }),
+        )
         .with(tracing_subscriber::fmt::layer())
         .init();
 
     tracing::info!("Control plane starting up...");
 
-    let database_url = env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://glacier:glacier123@localhost/glacier?sslmode=disable".into());
+    let database_url = env::var("DATABASE_URL").unwrap_or_else(|_| {
+        "postgres://glacier:glacier123@localhost/glacier?sslmode=disable".into()
+    });
 
     let pool = sqlx::postgres::PgPoolOptions::new()
         .max_connections(25)
@@ -58,10 +61,13 @@ async fn main() -> Result<(), error::AppError> {
     let webhook_secret = env::var("WEBHOOK_SECRET").unwrap_or_default();
     let pipeline_parser = Parser::new();
 
-    let github = env::var("GITHUB_TOKEN").ok().filter(|t| !t.is_empty()).map(|token| {
-        tracing::info!("GitHub commit status reporting enabled");
-        GitHubClient::new(token)
-    });
+    let github = env::var("GITHUB_TOKEN")
+        .ok()
+        .filter(|t| !t.is_empty())
+        .map(|token| {
+            tracing::info!("GitHub commit status reporting enabled");
+            GitHubClient::new(token)
+        });
 
     let dispatcher = Dispatcher::new(db.clone(), github.clone());
 
@@ -107,28 +113,75 @@ async fn main() -> Result<(), error::AppError> {
 
     let org_resource_routes = Router::new()
         .route("/", get(handlers::get_organization))
-        .route("/invitations", post(handlers::create_organization_invitation))
-        .route("/members/:user_id", put(handlers::update_member_role).delete(handlers::remove_member))
+        .route(
+            "/invitations",
+            post(handlers::create_organization_invitation),
+        )
+        .route(
+            "/members/:user_id",
+            put(handlers::update_member_role).delete(handlers::remove_member),
+        )
         .route("/builds", get(handlers::list_org_builds))
-        .route("/pipelines", get(handlers::list_user_pipelines).post(handlers::create_user_pipeline))
-        .route("/pipelines/:pipeline_slug", get(handlers::get_user_pipeline).patch(handlers::update_user_pipeline).delete(handlers::delete_user_pipeline))
-        .route("/pipelines/:pipeline_slug/builds", get(handlers::get_pipeline_builds).post(handlers::create_build))
-        .route("/pipelines/:pipeline_slug/builds/:number", get(handlers::get_build))
-        .route("/pipelines/:pipeline_slug/builds/:number/jobs/:job_id/log", get(handlers::get_job_log))
-        .route("/queues", get(handlers::list_user_queues).post(handlers::create_user_queue))
-        .route("/queues/:id", get(handlers::get_user_queue).put(handlers::update_user_queue).delete(handlers::delete_user_queue))
-        .route("/agent-tokens", get(handlers::list_user_agent_tokens).post(handlers::create_user_agent_token))
-        .route("/agent-tokens/:id", get(handlers::get_user_agent_token).delete(handlers::delete_user_agent_token))
+        .route(
+            "/pipelines",
+            get(handlers::list_user_pipelines).post(handlers::create_user_pipeline),
+        )
+        .route(
+            "/pipelines/:pipeline_slug",
+            get(handlers::get_user_pipeline)
+                .patch(handlers::update_user_pipeline)
+                .delete(handlers::delete_user_pipeline),
+        )
+        .route(
+            "/pipelines/:pipeline_slug/builds",
+            get(handlers::get_pipeline_builds).post(handlers::create_build),
+        )
+        .route(
+            "/pipelines/:pipeline_slug/builds/:number",
+            get(handlers::get_build),
+        )
+        .route(
+            "/pipelines/:pipeline_slug/builds/:number/jobs/:job_id/log",
+            get(handlers::get_job_log),
+        )
+        .route(
+            "/queues",
+            get(handlers::list_user_queues).post(handlers::create_user_queue),
+        )
+        .route(
+            "/queues/:id",
+            get(handlers::get_user_queue)
+                .put(handlers::update_user_queue)
+                .delete(handlers::delete_user_queue),
+        )
+        .route(
+            "/agent-tokens",
+            get(handlers::list_user_agent_tokens).post(handlers::create_user_agent_token),
+        )
+        .route(
+            "/agent-tokens/:id",
+            get(handlers::get_user_agent_token).delete(handlers::delete_user_agent_token),
+        )
         .route("/agents", get(handlers::list_user_agents));
 
     let org_routes = Router::new()
-        .route("/", get(handlers::list_organizations).post(handlers::create_organization))
+        .route(
+            "/",
+            get(handlers::list_organizations).post(handlers::create_organization),
+        )
         .route("/join/:token", post(handlers::join_organization))
         .nest("/:org_slug", org_resource_routes);
 
     let cors = CorsLayer::new()
         .allow_origin(Any)
-        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::PATCH, Method::DELETE, Method::OPTIONS])
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::PATCH,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
         .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
         .expose_headers([
             header::LINK,
@@ -171,7 +224,9 @@ async fn main() -> Result<(), error::AppError> {
 
 async fn shutdown_signal() {
     let ctrl_c = async {
-        signal::ctrl_c().await.expect("failed to install Ctrl+C handler");
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
     };
 
     #[cfg(unix)]
