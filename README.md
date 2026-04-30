@@ -1,8 +1,21 @@
-# Glacier
+# GlacierPlane
 
 Glacier is a self-hosted CI/CD control plane for running builds on your own infrastructure. It receives GitHub webhooks, creates builds and jobs, dispatches them to connected agents, stores logs in PostgreSQL, exposes a management UI, and can report commit statuses back to GitHub.
 
 The control plane implements the Buildkite Agent V3 protocol, so the standard `buildkite-agent` binary can be used as a worker process.
+
+## Navigation
+
+📷 [Video Overview](#video-overview)
+🔎 [Repository Layout](#repository-layout)
+📄 Instructions:
+- [1. Deploy The Control Plane On Ubuntu](#1-deploy-the-control-plane-on-ubuntu)
+- [2. Run The UI](#2-run-the-ui)
+- [3. Prepare A Repository Pipeline](#3-prepare-a-repository-pipeline)
+- [4. Configure GitHub Webhooks](#4-configure-github-webhooks)
+- [5. Set Up An Agent](#5-set-up-an-agent)
+- [6. Run A Build](#6-run-a-build)
+- [7. API Overview, Development](#7-api-overview)
 
 ## Video Overview
 
